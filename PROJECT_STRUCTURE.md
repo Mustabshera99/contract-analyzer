@@ -66,6 +66,7 @@ contract-analyzer/
 **After**: 35 essential dependencies
 
 **Removed unnecessary dependencies**:
+
 - `plotly` (not used in core functionality)
 - `scikit-learn` (not used)
 - `websockets` (not used)
@@ -124,11 +125,13 @@ contract-analyzer/
 ## Dependencies by Category
 
 ### Core Web Framework
+
 - `fastapi` - Web framework
 - `uvicorn` - ASGI server
 - `streamlit` - Frontend framework
 
 ### AI/ML
+
 - `langchain` - AI orchestration
 - `langchain-openai` - OpenAI integration
 - `langchain-community` - Community integrations
@@ -139,22 +142,26 @@ contract-analyzer/
 - `chromadb` - Vector database
 
 ### Document Processing
+
 - `unstructured` - Document parsing
 - `python-docx` - Word document processing
 - `pypdf` - PDF processing
 - `python-magic` - File type detection
 
 ### Data Processing
+
 - `pandas` - Data manipulation
 - `numpy` - Numerical computing
 
 ### Configuration & Validation
+
 - `pydantic` - Data validation
 - `pydantic-settings` - Settings management
 - `python-dotenv` - Environment variables
 - `pyyaml` - YAML processing
 
 ### Security & Authentication
+
 - `python-multipart` - File uploads
 - `python-jose` - JWT handling
 - `passlib` - Password hashing
@@ -163,17 +170,20 @@ contract-analyzer/
 - `cryptography` - Cryptographic operations
 
 ### Database & Caching
+
 - `sqlalchemy` - ORM
 - `asyncpg` - PostgreSQL async driver
 - `psycopg2-binary` - PostgreSQL driver
 - `redis` - Caching
 
 ### Monitoring & Observability
+
 - `prometheus-client` - Metrics
 - `structlog` - Structured logging
 - `opentelemetry-*` - Distributed tracing
 
 ### Utilities
+
 - `click` - CLI framework
 - `rich` - Rich text formatting
 - `chardet` - Character encoding detection

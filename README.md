@@ -16,17 +16,17 @@ An AI-powered contract analysis and negotiation assistance platform with enterpr
 
 This project uses a modern, decoupled architecture with clear separation of concerns and optimized dependencies.
 
-| Component             | Technology                                      |
-| --------------------- | ----------------------------------------------- |
-| **Backend**           | FastAPI, Uvicorn, Python 3.11                   |
-| **Frontend**          | Streamlit                                       |
-| **AI/ML Orchestration** | LangChain, LangGraph                            |
-| **Vector Store**      | ChromaDB                                        |
-| **Database**          | PostgreSQL                                      |
-| **Caching**           | Redis                                           |
-| **Dependency Mgmt**   | Poetry (35 essential deps)                      |
-| **Containerization**  | Docker, Docker Compose                          |
-| **API Versioning**    | REST API v1                                     |
+| Component               | Technology                    |
+| ----------------------- | ----------------------------- |
+| **Backend**             | FastAPI, Uvicorn, Python 3.11 |
+| **Frontend**            | Streamlit                     |
+| **AI/ML Orchestration** | LangChain, LangGraph          |
+| **Vector Store**        | ChromaDB                      |
+| **Database**            | PostgreSQL                    |
+| **Caching**             | Redis                         |
+| **Dependency Mgmt**     | Poetry (35 essential deps)    |
+| **Containerization**    | Docker, Docker Compose        |
+| **API Versioning**      | REST API v1                   |
 
 ### Key Improvements
 
@@ -64,10 +64,12 @@ docker-compose up --build -d
 ```
 
 Once the services are up, you can access:
+
 - **Frontend UI**: [http://localhost:8501](http://localhost:8501)
 - **Backend API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
 
 To stop the services:
+
 ```bash
 docker-compose down
 ```

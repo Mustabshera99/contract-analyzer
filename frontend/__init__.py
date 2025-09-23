@@ -7,7 +7,7 @@ from .config import get_config
 from .utils.api_client import APIClient
 
 __all__ = [
-    "main",
-    "get_config", 
-    "APIClient",
+	"APIClient",
+	"get_config",
+	"main",
 ]

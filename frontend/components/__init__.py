@@ -10,10 +10,10 @@ from .progress_indicator import progress_indicator
 from .results_display import results_display
 
 __all__ = [
-    "render_analytics_dashboard",
-    "error_display",
-    "file_upload_component", 
-    "render_observability_dashboard",
-    "progress_indicator",
-    "results_display",
+	"error_display",
+	"file_upload_component",
+	"progress_indicator",
+	"render_analytics_dashboard",
+	"render_observability_dashboard",
+	"results_display",
 ]
