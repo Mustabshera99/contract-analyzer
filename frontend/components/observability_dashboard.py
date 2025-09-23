@@ -11,7 +11,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import requests
 import streamlit as st
-from utils.api_client import APIClient
+from ..utils.api_client import APIClient
 
 
 class ObservabilityDashboard:

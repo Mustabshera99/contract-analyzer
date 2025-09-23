@@ -11,8 +11,8 @@ from typing import Dict, List, Optional
 from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
 
-from ..core.auth import APIKey
-from ..core.exceptions import (
+from ...core.auth import APIKey
+from ...core.exceptions import (
 	DocumentProcessingError,
 	InvalidFileTypeError,
 	ResourceExhaustionError,
@@ -20,10 +20,10 @@ from ..core.exceptions import (
 	ValidationError,
 	WorkflowExecutionError,
 )
-from ..core.file_handler import FileSecurityValidator, temp_file_handler
-from ..core.logging import get_logger
-from ..core.monitoring import log_audit_event
-from ..models.api_models import (
+from ...core.file_handler import FileSecurityValidator, temp_file_handler
+from ...core.logging import get_logger
+from ...core.monitoring import log_audit_event
+from ...models.api_models import (
 	AnalysisResponse,
 	AnalysisStatusResponse,
 	AnalysisTask,
@@ -32,11 +32,11 @@ from ..models.api_models import (
 	ErrorResponse,
 	ProgressUpdate,
 )
-from ..services.document_processor import DocumentProcessingService
-from ..services.workflow_service import workflow_service
-from ..utils.sanitization import input_sanitizer
-from ..utils.security import sanitize_filename, validate_upload_file
-from ..workflows.core import create_workflow
+from ...services.document_processor import DocumentProcessingService
+from ...services.workflow_service import workflow_service
+from ...utils.sanitization import input_sanitizer
+from ...utils.security import sanitize_filename, validate_upload_file
+from ...workflows.core import create_workflow
 
 logger = get_logger(__name__)
 router = APIRouter()
@@ -220,9 +220,9 @@ def convert_workflow_result_to_response(workflow_result: dict, processing_time: 
 	)
 
 
-from ..core.audit import AuditEventType, audit_logger
-from ..core.file_handler import temp_file_handler
-from ..utils.security import file_validator, sanitize_filename
+from ...core.audit import AuditEventType, audit_logger
+from ...core.file_handler import temp_file_handler
+from ...utils.security import file_validator, sanitize_filename
 
 
 @router.post("/analyze-contract", response_model=AnalysisResponse, tags=["Contract Analysis"])

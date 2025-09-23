@@ -11,13 +11,13 @@ from pathlib import Path
 import streamlit as st
 
 # Import components
-from components.analytics_dashboard import render_analytics_dashboard
-from components.error_display import error_display
-from components.file_upload import file_upload_component
-from components.observability_dashboard import render_observability_dashboard
-from components.progress_indicator import progress_indicator
-from components.results_display import results_display
-from utils.api_client import APIClient
+from .components.analytics_dashboard import render_analytics_dashboard
+from .components.error_display import error_display
+from .components.file_upload import file_upload_component
+from .components.observability_dashboard import render_observability_dashboard
+from .components.progress_indicator import progress_indicator
+from .components.results_display import results_display
+from .utils.api_client import APIClient
 
 # Initialize API client
 # Use localhost for browser access, backend for container-to-container communication

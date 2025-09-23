@@ -1,130 +1,100 @@
-# Contract Risk Analyzer
+# Contract Analyzer
 
-An AI-powered contract analysis and negotiation assistance platform with enterprise-grade security, built with a modern Python stack.
+AI-powered contract analysis and negotiation assistance with enterprise security.
 
----
+## Table of Contents
 
-## ✨ Features
+- [About The Project](#about-the-project)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+- [Usage](#usage)
+- [Project Structure](#project-structure)
+- [Contributing](#contributing)
+- [License](#license)
+- [Contact](#contact)
 
-- **AI-Powered Analysis**: Identifies risky clauses, suggests redlines, and even drafts negotiation emails using models like GPT-4 and Claude.
-- **Asynchronous Workflow**: Upload a contract and get a task ID to poll for results without tying up the frontend.
-- **Enterprise-Grade Security**: Features secure file handling, input sanitization, audit logging, and JWT authentication.
-- **Comprehensive Monitoring**: In-depth observability with structured logging, Prometheus metrics, and LangSmith tracing for AI operations.
-- **Containerized**: Packaged with Docker and Docker Compose for easy, reproducible deployments.
+## About The Project
 
-## 🏗️ Architecture
+This project is an AI-powered contract analysis and negotiation assistance tool. It provides enterprise-grade security features to ensure that your contracts are handled with the utmost care.
 
-This project uses a modern, decoupled architecture with clear separation of concerns and optimized dependencies.
+## Getting Started
 
-| Component               | Technology                    |
-| ----------------------- | ----------------------------- |
-| **Backend**             | FastAPI, Uvicorn, Python 3.11 |
-| **Frontend**            | Streamlit                     |
-| **AI/ML Orchestration** | LangChain, LangGraph          |
-| **Vector Store**        | ChromaDB                      |
-| **Database**            | PostgreSQL                    |
-| **Caching**             | Redis                         |
-| **Dependency Mgmt**     | Poetry (35 essential deps)    |
-| **Containerization**    | Docker, Docker Compose        |
-| **API Versioning**      | REST API v1                   |
-
-### Key Improvements
-
-- **50% fewer dependencies** - Only essential packages included
-- **Versioned API structure** - `/api/v1/` endpoints
-- **Organized codebase** - Clear separation of concerns
-- **Better documentation** - Categorized by type
-- **Improved security** - Minimal attack surface
-
-## 🚀 Getting Started
+To get a local copy up and running follow these simple steps.
 
 ### Prerequisites
 
-- **Docker** & **Docker Compose**
-- **Poetry** (for local development)
+- Docker
+- Python 3.11+
+- Poetry
 
-### 1. Configuration
+### Installation
 
-First, set up your environment variables. A template is provided in the `config/` directory.
+1. Clone the repo
+   ```sh
+   git clone https://github.com/your_username_/contract-analyzer.git
+   ```
+2. Install dependencies
+   ```sh
+   poetry install
+   ```
+3. Set up the environment
+   ```sh
+   make setup
+   ```
 
-```bash
-# From the project root
-cp config/env.template .env
-```
+## Usage
 
-Now, edit the `.env` file and fill in the required values, especially your `OPENAI_API_KEY` and secret keys.
+You can run the application using Docker with the following commands:
 
-### 2. Run with Docker Compose (Recommended)
+- `make dev`: Run in development mode with hot-reloading.
+- `make prod`: Run in production mode.
+- `make stop`: Stop the application.
+- `make logs`: View the application logs.
 
-This is the simplest way to get the entire application running.
+For a full list of commands, run `make help`.
 
-```bash
-# Build and start all services in the background
-docker-compose up --build -d
-```
-
-Once the services are up, you can access:
-
-- **Frontend UI**: [http://localhost:8501](http://localhost:8501)
-- **Backend API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
-
-To stop the services:
-
-```bash
-docker-compose down
-```
-
-### 3. Local Development (Without Docker)
-
-If you prefer to run the services directly on your machine:
-
-```bash
-# 1. Install all project dependencies
-poetry install --with dev
-
-# 2. Run the backend server (in one terminal)
-poetry run uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
-
-# 3. Run the frontend server (in another terminal)
-poetry run streamlit run frontend/app.py
-```
-
-## 🧪 Testing
-
-The project has a comprehensive test suite. To run the tests, first ensure you have installed the development dependencies (`poetry install --with dev`).
-
-```bash
-# Run all tests
-poetry run pytest
-
-# Run tests with coverage report
-poetry run pytest --cov
-```
-
-## 📂 Project Structure
+## Project Structure
 
 ```
-.
-├── backend/         # FastAPI application, services, and core logic
-├── frontend/        # Streamlit UI components and pages
-├── config/          # Environment variable templates
-├── docs/            # Project documentation
-├── sample_contracts/  # Example contracts for testing
-├── .github/         # CI/CD workflows (GitHub Actions)
-├── docker-compose.yml # Docker orchestration
-└── pyproject.toml   # Dependency management (Poetry)
+├── backend
+│   ├── app
+│   └── tests
+├── config
+├── data
+├── frontend
+├── logs
+├── sample_contracts
+├── scripts
+└── venv
 ```
 
-## 🤖 CI/CD Pipeline
+- **backend**: Contains the FastAPI backend application.
+- **config**: Contains configuration files.
+- **data**: Contains data used by the application, such as databases and vector stores.
+- **frontend**: Contains the Streamlit frontend application.
+- **logs**: Contains log files.
+- **sample_contracts**: Contains sample contracts for testing.
+- **scripts**: Contains utility scripts for deployment, monitoring, etc.
+- **venv**: Contains the Python virtual environment.
 
-This project uses **GitHub Actions** for continuous integration. The pipeline, defined in `.github/workflows/test.yml`, automatically runs the following checks on every push and pull request:
+## Contributing
 
-- **Unit & Integration Tests** across multiple Python versions.
-- **Code Quality Checks** (linting, formatting) with Ruff/Black.
-- **Static Type Checking** with MyPy.
-- **Security Scans** with Bandit and Safety.
-- **Docker Image Builds** to ensure containerization works correctly.
+Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
-## 📄 License
+1.  Fork the Project
+2.  Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3.  Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4.  Push to the Branch (`git push origin feature/AmazingFeature`)
+5.  Open a Pull Request
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+## License
+
+Distributed under the MIT License. See `LICENSE` for more information.
+
+## Contact
+
+Your Name - [@your_twitter](https://twitter.com/your_twitter) - email@example.com
+
+Project Link: [https://github.com/your_username_/contract-analyzer](https://github.com/your_username_/contract-analyzer)
+

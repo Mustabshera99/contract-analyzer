@@ -10,9 +10,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
-from ..core.database import get_database_manager
-from ..core.logging import get_logger
-from ..core.security import (
+from ...core.database import get_database_manager
+from ...core.logging import get_logger
+from ...core.security import (
 	AuthenticationMethod,
 	LoginRequest,
 	MFAEnableRequest,
@@ -180,7 +180,7 @@ async def enable_mfa(mfa_data: MFAEnableRequest, request: Request, current_user:
 			# Update user in database
 			db_manager = get_database_manager()
 			async with db_manager.get_session() as session:
-				from ..core.security import User
+				from ...core.security import User
 
 				await session.execute(User.__table__.update().where(User.id == current_user.user_id).values(mfa_enabled=True, mfa_secret=secret))
 				await session.commit()

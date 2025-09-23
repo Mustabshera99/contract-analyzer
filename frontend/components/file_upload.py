@@ -6,7 +6,7 @@ import io
 from typing import Optional, Union
 
 import streamlit as st
-from config import config
+from ..config import config
 
 
 def validate_file_size(file_obj, max_size_mb: int = None) -> tuple[bool, str]:
