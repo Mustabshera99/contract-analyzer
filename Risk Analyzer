@@ -1,0 +1,7 @@
+Contract Risk Analyzer & Negotiator
+Use‐Case: Parses uploaded contracts,
+highlights risky clauses, suggests
+redlines, and sends revision emails to
+counterparties.
+Tools: DocuSign, Microsoft 365 email,
+vector DB for precedent clauses.
