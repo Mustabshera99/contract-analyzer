@@ -1,0 +1,1076 @@
+openapi: 3.0.3
+info:
+  title: Contract Risk Analyzer API
+  description: |
+    AI-powered contract analysis and negotiation assistance API.
+    
+    This API provides comprehensive contract analysis capabilities including:
+    - Risk assessment and clause identification
+    - Intelligent redline suggestions
+    - Automated email generation for negotiations
+    - Real-time progress tracking via WebSocket
+    - Comprehensive health monitoring
+    
+    ## Authentication
+    Currently, the API does not require authentication for basic operations.
+    Future versions will implement JWT-based authentication.
+    
+    ## Rate Limiting
+    - Synchronous Analysis: 10 requests per minute per IP
+    - Asynchronous Analysis: 5 requests per minute per IP
+    - WebSocket Connections: 3 concurrent connections per IP
+    
+    ## File Upload Requirements
+    - Supported formats: PDF (.pdf), DOCX (.docx)
+    - Maximum size: 10MB per file
+    - Must contain readable text content
+  version: 0.1.0
+  contact:
+    name: Contract Risk Analyzer Team
+    url: https://github.com/your-org/contract-analyzer
+    email: support@contract-analyzer.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8000
+    description: Development server
+  - url: https://api.contract-analyzer.com
+    description: Production server
+
+paths:
+  /api/v1/health:
+    get:
+      tags:
+        - Health
+      summary: Basic health check
+      description: |
+        Health check endpoint for monitoring and deployment verification.
+        Returns the current service status and dependency health.
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: "healthy"
+                version: "0.1.0"
+                dependencies:
+                  openai_api_key: "configured"
+                  chroma_persist_dir: "configured"
+                  langsmith: "optional"
+                  monitoring: "enabled"
+        '503':
+          description: Service is degraded or unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: "degraded"
+                version: "0.1.0"
+                dependencies:
+                  openai_api_key: "missing"
+                  chroma_persist_dir: "configured"
+
+  /api/v1/health/detailed:
+    get:
+      tags:
+        - Health
+      summary: Detailed health check
+      description: |
+        Comprehensive health check with system metrics and configuration details.
+        Includes uptime, resource usage, and detailed dependency status.
+      responses:
+        '200':
+          description: Detailed health information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy, degraded, unhealthy]
+                  dependencies:
+                    type: object
+                    additionalProperties:
+                      type: string
+                  system:
+                    type: object
+                    properties:
+                      uptime_seconds:
+                        type: number
+                      uptime_human:
+                        type: string
+                      timestamp:
+                        type: string
+                        format: date-time
+                      version:
+                        type: string
+                      environment:
+                        type: string
+                  metrics:
+                    type: object
+                    properties:
+                      total_requests:
+                        type: integer
+                      successful_requests:
+                        type: integer
+                      failed_requests:
+                        type: integer
+                      average_response_time:
+                        type: number
+                  configuration:
+                    type: object
+                    properties:
+                      monitoring_enabled:
+                        type: boolean
+                      debug_mode:
+                        type: boolean
+        '500':
+          description: Health check failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/health/readiness:
+    get:
+      tags:
+        - Health
+      summary: Readiness check
+      description: |
+        Kubernetes readiness probe endpoint.
+        Checks if the service is ready to accept traffic.
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ready:
+                    type: boolean
+                  checks:
+                    type: object
+                    additionalProperties:
+                      type: boolean
+                  timestamp:
+                    type: string
+                    format: date-time
+        '503':
+          description: Service is not ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ready:
+                    type: boolean
+                  checks:
+                    type: object
+                    additionalProperties:
+                      type: boolean
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /api/v1/health/liveness:
+    get:
+      tags:
+        - Health
+      summary: Liveness check
+      description: |
+        Kubernetes liveness probe endpoint.
+        Checks if the service is alive and responding.
+      responses:
+        '200':
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  alive:
+                    type: boolean
+                  timestamp:
+                    type: string
+                    format: date-time
+                  uptime_seconds:
+                    type: number
+        '503':
+          description: Service is not alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  alive:
+                    type: boolean
+                  error:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /api/v1/analyze-contract:
+    post:
+      tags:
+        - Contract Analysis
+      summary: Analyze contract synchronously
+      description: |
+        Analyze a contract document for risky clauses and generate negotiation suggestions.
+        
+        This endpoint provides immediate analysis results for smaller contracts.
+        For larger documents, use the asynchronous endpoint.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Contract file to analyze (.pdf or .docx)
+              required:
+                - file
+      responses:
+        '200':
+          description: Analysis completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisResponse'
+              example:
+                risky_clauses:
+                  - clause_text: "The Company shall not be liable for any indirect damages..."
+                    risk_explanation: "This clause limits liability for indirect damages which could expose the client to significant financial risk."
+                    risk_level: "High"
+                    precedent_reference: "See similar clause in Contract ABC-123"
+                    clause_index: 15
+                suggested_redlines:
+                  - original_clause: "The Company shall not be liable for any indirect damages..."
+                    suggested_redline: "The Company shall not be liable for any indirect damages except those arising from gross negligence or willful misconduct..."
+                    risk_explanation: "Original clause is too broad and could limit legitimate claims"
+                    clause_index: 15
+                    change_rationale: "Add exception for gross negligence to protect client interests"
+                    risk_mitigated: true
+                email_draft: "Dear [Counterparty],\n\nI've reviewed the contract and identified several clauses that require attention..."
+                processing_time: 45.2
+                analysis_timestamp: "2024-01-01T12:00:00Z"
+                status: "completed"
+                overall_risk_score: 7.5
+                warnings: []
+                errors: []
+        '400':
+          description: Invalid file or validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '408':
+          description: Analysis timed out
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: File too large
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported file type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/analyze-contract/async:
+    post:
+      tags:
+        - Contract Analysis
+      summary: Start asynchronous contract analysis
+      description: |
+        Start asynchronous contract analysis with progress tracking.
+        
+        This endpoint is recommended for larger documents or when you need
+        real-time progress updates via WebSocket.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Contract file to analyze (.pdf or .docx)
+                timeout_seconds:
+                  type: integer
+                  minimum: 30
+                  maximum: 3600
+                  default: 300
+                  description: Analysis timeout in seconds
+                priority:
+                  type: string
+                  enum: [low, normal, high]
+                  default: normal
+                  description: Analysis priority
+                callback_url:
+                  type: string
+                  format: uri
+                  description: URL to call when analysis is complete
+                enable_progress_tracking:
+                  type: boolean
+                  default: true
+                  description: Enable real-time progress tracking
+              required:
+                - file
+      responses:
+        '202':
+          description: Analysis task started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AsyncAnalysisResponse'
+              example:
+                task_id: "task_123456789"
+                status: "pending"
+                estimated_completion_time: "2024-01-01T12:05:00Z"
+                status_url: "/api/v1/analyze-contract/async/task_123456789/status"
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many concurrent tasks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Failed to start analysis task
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/analyze-contract/async/{task_id}/status:
+    get:
+      tags:
+        - Contract Analysis
+      summary: Get analysis task status
+      description: |
+        Get the current status of an asynchronous analysis task.
+        Includes progress updates and resource metrics.
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          description: The ID of the analysis task
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisStatusResponse'
+              example:
+                status: "running"
+                current_node: "risk_analysis"
+                execution_id: "task_123456789"
+                error_count: 0
+                warnings: []
+                last_error: null
+                start_time: "2024-01-01T12:00:00Z"
+                end_time: null
+                processing_duration: 120.5
+                risky_clauses_count: 3
+                redlines_count: 2
+                overall_risk_score: null
+                contract_filename: "contract.pdf"
+                progress_updates:
+                  - node: "document_processing"
+                    progress_percentage: 25.0
+                    message: "Extracting text from document..."
+                    timestamp: "2024-01-01T12:00:30Z"
+                    estimated_remaining_seconds: 180
+                resource_usage:
+                  memory_mb: 512
+                  cpu_percent: 45.2
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error retrieving task status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/analyze-contract/async/{task_id}/result:
+    get:
+      tags:
+        - Contract Analysis
+      summary: Get analysis task result
+      description: |
+        Get the result of a completed asynchronous analysis task.
+        Only available for completed tasks.
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          description: The ID of the analysis task
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Result retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisResponse'
+        '400':
+          description: Task not completed yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error retrieving result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/analyze-contract/async/{task_id}/progress:
+    get:
+      tags:
+        - Contract Analysis
+      summary: Get task progress updates
+      description: |
+        Get progress updates for a specific task.
+        Returns recent progress updates with timestamps.
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          description: The ID of the analysis task
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of progress updates to return
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Progress updates retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProgressUpdate'
+              example:
+                - node: "document_processing"
+                  progress_percentage: 25.0
+                  message: "Extracting text from document..."
+                  timestamp: "2024-01-01T12:00:30Z"
+                  estimated_remaining_seconds: 180
+                - node: "risk_analysis"
+                  progress_percentage: 75.0
+                  message: "Analyzing clauses for risk factors..."
+                  timestamp: "2024-01-01T12:02:15Z"
+                  estimated_remaining_seconds: 45
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/analyze-contract/tasks/active:
+    get:
+      tags:
+        - Contract Analysis
+      summary: Get active analysis tasks
+      description: |
+        Get the status of all active analysis tasks.
+        Useful for monitoring and capacity planning.
+      responses:
+        '200':
+          description: Active tasks retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AnalysisStatusResponse'
+              example:
+                - status: "running"
+                  current_node: "risk_analysis"
+                  execution_id: "task_123456789"
+                  error_count: 0
+                  warnings: []
+                  last_error: null
+                  start_time: "2024-01-01T12:00:00Z"
+                  end_time: null
+                  processing_duration: 120.5
+                  risky_clauses_count: 3
+                  redlines_count: 2
+                  overall_risk_score: null
+                  contract_filename: "contract.pdf"
+
+  /api/v1/analyze-contract/async/{task_id}:
+    delete:
+      tags:
+        - Contract Analysis
+      summary: Cancel analysis task
+      description: |
+        Cancel an active asynchronous analysis task.
+        Only pending or running tasks can be cancelled.
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          description: The ID of the analysis task to cancel
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task cancelled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Analysis task task_123456789 has been cancelled"
+        '404':
+          description: Task not found or cannot be cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error cancelling task
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/analyze-contract/service/metrics:
+    get:
+      tags:
+        - Contract Analysis
+      summary: Get service metrics
+      description: |
+        Get service-level metrics for monitoring and capacity planning.
+        Includes task counts, resource utilization, and rate limits.
+      responses:
+        '200':
+          description: Service metrics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_tasks:
+                    type: integer
+                    description: Total number of tasks processed
+                  active_tasks:
+                    type: integer
+                    description: Number of currently active tasks
+                  completed_tasks:
+                    type: integer
+                    description: Number of completed tasks
+                  failed_tasks:
+                    type: integer
+                    description: Number of failed tasks
+                  average_processing_time:
+                    type: number
+                    description: Average processing time in seconds
+                  resource_utilization:
+                    type: object
+                    properties:
+                      memory_usage_mb:
+                        type: number
+                      cpu_usage_percent:
+                        type: number
+                      disk_usage_mb:
+                        type: number
+                  rate_limits:
+                    type: object
+                    properties:
+                      requests_per_minute:
+                        type: integer
+                      max_concurrent_tasks:
+                        type: integer
+              example:
+                total_tasks: 150
+                active_tasks: 5
+                completed_tasks: 140
+                failed_tasks: 5
+                average_processing_time: 45.2
+                resource_utilization:
+                  memory_usage_mb: 2048
+                  cpu_usage_percent: 65.5
+                  disk_usage_mb: 512
+                rate_limits:
+                  requests_per_minute: 45
+                  max_concurrent_tasks: 10
+
+  /api/v1/ws/stats:
+    get:
+      tags:
+        - WebSocket
+      summary: Get WebSocket connection statistics
+      description: |
+        Get WebSocket connection statistics for monitoring.
+        Shows active connections and task distribution.
+      responses:
+        '200':
+          description: WebSocket statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_connections:
+                    type: integer
+                    description: Total number of active WebSocket connections
+                  active_tasks:
+                    type: integer
+                    description: Number of tasks with active WebSocket connections
+                  connections_per_task:
+                    type: object
+                    additionalProperties:
+                      type: integer
+                    description: Number of connections per task
+              example:
+                total_connections: 15
+                active_tasks: 5
+                connections_per_task:
+                  task_123456789: 3
+                  task_987654321: 2
+
+components:
+  schemas:
+    RiskyClause:
+      type: object
+      required:
+        - clause_text
+        - risk_explanation
+        - risk_level
+        - clause_index
+      properties:
+        clause_text:
+          type: string
+          description: The text of the risky clause
+          example: "The Company shall not be liable for any indirect damages..."
+        risk_explanation:
+          type: string
+          description: Explanation of why this clause is risky
+          example: "This clause limits liability for indirect damages which could expose the client to significant financial risk."
+        risk_level:
+          type: string
+          enum: [Low, Medium, High]
+          description: Risk level classification
+          example: "High"
+        precedent_reference:
+          type: string
+          nullable: true
+          description: Reference to relevant precedent
+          example: "See similar clause in Contract ABC-123"
+        clause_index:
+          type: integer
+          description: Index of the clause in the contract
+          example: 15
+
+    RedlineSuggestion:
+      type: object
+      required:
+        - original_clause
+        - suggested_redline
+        - risk_explanation
+        - clause_index
+      properties:
+        original_clause:
+          type: string
+          description: The original risky clause text
+          example: "The Company shall not be liable for any indirect damages..."
+        suggested_redline:
+          type: string
+          description: Suggested alternative language
+          example: "The Company shall not be liable for any indirect damages except those arising from gross negligence or willful misconduct..."
+        risk_explanation:
+          type: string
+          description: Explanation of the risk being addressed
+          example: "Original clause is too broad and could limit legitimate claims"
+        clause_index:
+          type: integer
+          description: Index of the clause in the contract
+          example: 15
+        change_rationale:
+          type: string
+          description: Rationale for the suggested change
+          default: ""
+          example: "Add exception for gross negligence to protect client interests"
+        risk_mitigated:
+          type: boolean
+          nullable: true
+          description: Whether the risk is mitigated by the change
+          example: true
+
+    ProgressUpdate:
+      type: object
+      required:
+        - node
+        - progress_percentage
+        - message
+        - timestamp
+      properties:
+        node:
+          type: string
+          description: Current workflow node
+          example: "risk_analysis"
+        progress_percentage:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Progress percentage (0-100)
+          example: 75.0
+        message:
+          type: string
+          description: Progress message
+          example: "Analyzing clauses for risk factors..."
+        timestamp:
+          type: string
+          format: date-time
+          description: Update timestamp
+          example: "2024-01-01T12:02:15Z"
+        estimated_remaining_seconds:
+          type: integer
+          nullable: true
+          description: Estimated remaining time in seconds
+          example: 45
+
+    AnalysisResponse:
+      type: object
+      required:
+        - risky_clauses
+        - suggested_redlines
+        - email_draft
+        - analysis_timestamp
+        - status
+        - warnings
+        - errors
+      properties:
+        risky_clauses:
+          type: array
+          items:
+            $ref: '#/components/schemas/RiskyClause'
+          description: List of identified risky clauses
+        suggested_redlines:
+          type: array
+          items:
+            $ref: '#/components/schemas/RedlineSuggestion'
+          description: List of suggested redlines
+        email_draft:
+          type: string
+          description: Draft email for negotiation communication
+          example: "Dear [Counterparty],\n\nI've reviewed the contract and identified several clauses that require attention..."
+        processing_time:
+          type: number
+          nullable: true
+          description: Time taken to process the contract in seconds
+          example: 45.2
+        analysis_timestamp:
+          type: string
+          format: date-time
+          description: When the analysis was completed
+          example: "2024-01-01T12:00:00Z"
+        status:
+          type: string
+          description: Analysis status
+          example: "completed"
+        overall_risk_score:
+          type: number
+          nullable: true
+          minimum: 0
+          maximum: 10
+          description: Overall risk score for the contract
+          example: 7.5
+        warnings:
+          type: array
+          items:
+            type: string
+          description: Processing warnings
+          example: []
+        errors:
+          type: array
+          items:
+            type: string
+          description: Processing errors
+          example: []
+
+    AnalysisStatusResponse:
+      type: object
+      required:
+        - status
+        - current_node
+        - execution_id
+        - error_count
+        - warnings
+        - risky_clauses_count
+        - redlines_count
+        - contract_filename
+        - progress_updates
+      properties:
+        status:
+          type: string
+          description: Current analysis status
+          example: "running"
+        current_node:
+          type: string
+          description: Current workflow node
+          example: "risk_analysis"
+        execution_id:
+          type: string
+          description: Unique execution identifier
+          example: "task_123456789"
+        error_count:
+          type: integer
+          description: Number of errors encountered
+          example: 0
+        warnings:
+          type: array
+          items:
+            type: string
+          description: Processing warnings
+          example: []
+        last_error:
+          type: string
+          nullable: true
+          description: Last error message
+          example: null
+        start_time:
+          type: string
+          format: date-time
+          nullable: true
+          description: Analysis start time
+          example: "2024-01-01T12:00:00Z"
+        end_time:
+          type: string
+          format: date-time
+          nullable: true
+          description: Analysis end time
+          example: null
+        processing_duration:
+          type: number
+          nullable: true
+          description: Processing duration in seconds
+          example: 120.5
+        risky_clauses_count:
+          type: integer
+          description: Number of risky clauses found
+          example: 3
+        redlines_count:
+          type: integer
+          description: Number of redlines generated
+          example: 2
+        overall_risk_score:
+          type: number
+          nullable: true
+          description: Overall risk score
+          example: null
+        contract_filename:
+          type: string
+          description: Contract filename
+          example: "contract.pdf"
+        progress_updates:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProgressUpdate'
+          description: Progress tracking updates
+        resource_usage:
+          type: object
+          nullable: true
+          description: Resource usage metrics
+          properties:
+            memory_mb:
+              type: number
+            cpu_percent:
+              type: number
+
+    AsyncAnalysisRequest:
+      type: object
+      properties:
+        timeout_seconds:
+          type: integer
+          minimum: 30
+          maximum: 3600
+          default: 300
+          description: Timeout for analysis in seconds
+        priority:
+          type: string
+          enum: [low, normal, high]
+          default: normal
+          description: Analysis priority
+        callback_url:
+          type: string
+          format: uri
+          nullable: true
+          description: URL to call when analysis is complete
+        enable_progress_tracking:
+          type: boolean
+          default: true
+          description: Enable real-time progress tracking
+
+    AsyncAnalysisResponse:
+      type: object
+      required:
+        - task_id
+        - status
+        - status_url
+      properties:
+        task_id:
+          type: string
+          description: Unique task identifier
+          example: "task_123456789"
+        status:
+          type: string
+          description: Initial task status
+          example: "pending"
+        estimated_completion_time:
+          type: string
+          format: date-time
+          nullable: true
+          description: Estimated completion time
+          example: "2024-01-01T12:05:00Z"
+        status_url:
+          type: string
+          description: URL to check task status
+          example: "/api/v1/analyze-contract/async/task_123456789/status"
+
+    ErrorResponse:
+      type: object
+      required:
+        - error_type
+        - message
+        - timestamp
+      properties:
+        error_type:
+          type: string
+          description: Type of error that occurred
+          example: "ValidationError"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "File validation failed"
+        details:
+          type: object
+          nullable: true
+          description: Additional error details
+          example:
+            field: "file"
+            value: "document.txt"
+            suggestions: ["Please upload a PDF or DOCX file"]
+        timestamp:
+          type: string
+          format: date-time
+          description: When the error occurred
+          example: "2024-01-01T12:00:00Z"
+        request_id:
+          type: string
+          nullable: true
+          description: Unique request identifier for tracking
+          example: "req_123456789"
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - timestamp
+        - version
+        - dependencies
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+          description: Service status
+          example: "healthy"
+        timestamp:
+          type: string
+          format: date-time
+          description: Health check timestamp
+          example: "2024-01-01T12:00:00Z"
+        version:
+          type: string
+          description: API version
+          example: "0.1.0"
+        dependencies:
+          type: object
+          additionalProperties:
+            type: string
+          description: Status of external dependencies
+          example:
+            openai_api_key: "configured"
+            chroma_persist_dir: "configured"
+            langsmith: "optional"
+            monitoring: "enabled"
+
+  securitySchemes:
+    # Future authentication schemes
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT-based authentication (planned for future versions)
+
+tags:
+  - name: Health
+    description: Health check and monitoring endpoints
+  - name: Contract Analysis
+    description: Contract analysis and processing endpoints
+  - name: WebSocket
+    description: WebSocket endpoints for real-time communication
+
+externalDocs:
+  description: Contract Risk Analyzer Documentation
+  url: https://github.com/your-org/contract-analyzer/docs
