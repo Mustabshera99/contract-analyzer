@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
-import aiohttp
+import httpx
 from pydantic import BaseModel
 
 from ..core.config import get_settings
@@ -256,9 +256,9 @@ class SlackIntegration:
 
 			payload = {"text": message, "channel": channel or "#general"}
 
-			async with aiohttp.ClientSession() as session:
-				async with session.post(self.webhook_url, json=payload) as response:
-					return response.status == 200
+			async with httpx.AsyncClient() as client:
+				response = await client.post(self.webhook_url, json=payload)
+				return response.status_code == 200
 		except Exception as e:
 			logger.error(f"Failed to send Slack notification: {e}")
 			return False

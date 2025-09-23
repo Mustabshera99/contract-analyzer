@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-import aiohttp
+import httpx
 from pydantic import BaseModel
 
 from ..core.config import get_settings
@@ -88,9 +88,9 @@ class SlackService:
 			if message.blocks:
 				payload["blocks"] = message.blocks
 
-			async with aiohttp.ClientSession() as session:
-				async with session.post(self.webhook_url, json=payload) as response:
-					return response.status == 200
+			async with httpx.AsyncClient() as client:
+				response = await client.post(self.webhook_url, json=payload)
+				return response.status_code == 200
 
 		except Exception as e:
 			logger.error(f"Failed to send Slack webhook: {e}")
@@ -109,10 +109,10 @@ class SlackService:
 			if message.blocks:
 				payload["blocks"] = message.blocks
 
-			async with aiohttp.ClientSession() as session:
-				async with session.post(f"{self.base_url}/chat.postMessage", headers=headers, json=payload) as response:
-					result = await response.json()
-					return result.get("ok", False)
+			async with httpx.AsyncClient() as client:
+				response = await client.post(f"{self.base_url}/chat.postMessage", headers=headers, json=payload)
+				result = response.json()
+				return result.get("ok", False)
 
 		except Exception as e:
 			logger.error(f"Failed to send Slack bot message: {e}")
@@ -295,9 +295,9 @@ class SlackService:
 
 			headers = {"Authorization": f"Bearer {self.bot_token}", "Content-Type": "application/json"}
 
-			async with aiohttp.ClientSession() as session:
-				async with session.get(f"{self.base_url}/conversations.list", headers=headers) as response:
-					result = await response.json()
+			async with httpx.AsyncClient() as client:
+				response = await client.get(f"{self.base_url}/conversations.list", headers=headers)
+				result = response.json()
 
 					if result.get("ok"):
 						channels = []

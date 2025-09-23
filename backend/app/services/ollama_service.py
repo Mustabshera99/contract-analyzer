@@ -257,16 +257,16 @@ class OllamaService:
 			if not await self._check_ollama_connection():
 				return []
 
-			async with aiohttp.ClientSession() as session:
-				async with session.get(f"{self.base_url}/api/tags") as response:
-					if response.status == 200:
-						data = await response.json()
-						models = [model["name"] for model in data.get("models", [])]
-						logger.info(f"Retrieved {len(models)} Ollama models")
-						return models
-					else:
-						logger.warning(f"Failed to get models: {response.status}")
-						return []
+			async with httpx.AsyncClient() as client:
+				response = await client.get(f"{self.base_url}/api/tags")
+				if response.status_code == 200:
+					data = response.json()
+					models = [model["name"] for model in data.get("models", [])]
+					logger.info(f"Retrieved {len(models)} Ollama models")
+					return models
+				else:
+					logger.warning(f"Failed to get models: {response.status_code}")
+					return []
 		except Exception as e:
 			logger.error(f"Failed to get Ollama models: {e}")
 			return []

@@ -6,8 +6,9 @@ import base64
 import json
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlencode
 
-import aiohttp
+import httpx
 from pydantic import BaseModel
 
 from ..core.config import get_settings
@@ -64,161 +65,220 @@ class DocuSignService:
 		self.base_uri = None
 
 		# Use sandbox for demo
+		self.auth_server_url = "https://account-d.docusign.com"
 		self.base_url = "https://demo.docusign.net/restapi/v2.1"
 
 		logger.info(f"DocuSign service initialized: enabled={self.enabled}")
 
-	async def authenticate(self) -> bool:
-		"""Authenticate with DocuSign API"""
+	def get_authorization_url(self) -> Optional[str]:
+		"""Get the DocuSign authorization URL"""
+		if not self.enabled:
+			return None
+
+		params = {
+			"response_type": "code",
+			"scope": " ".join(self.scopes),
+			"client_id": self.client_id,
+			"redirect_uri": self.redirect_uri,
+		}
+		return f"{self.auth_server_url}/oauth/auth?{urlencode(params)}"
+
+	async def handle_oauth_callback(self, code: str) -> bool:
+		"""Handle the OAuth callback from DocuSign"""
+		if not self.enabled:
+			return False
+
 		try:
-			if not self.enabled or not self.client_id or not self.client_secret:
-				logger.warning("DocuSign not enabled or credentials missing")
-				return False
+			async with httpx.AsyncClient() as client:
+				response = await client.post(
+					f"{self.auth_server_url}/oauth/token",
+					headers={"Content-Type": "application/x-www-form-urlencoded"},
+					data={
+						"grant_type": "authorization_code",
+						"code": code,
+						"client_id": self.client_id,
+						"client_secret": self.client_secret,
+						"redirect_uri": self.redirect_uri,
+					},
+				)
+				response.raise_for_status()
+				token_data = response.json()
 
-			# For demo purposes, we'll use mock authentication
-			# In production, implement OAuth2 flow
-			self.access_token = f"docusign_token_{datetime.now().timestamp()}"
-			self.refresh_token = f"docusign_refresh_{datetime.now().timestamp()}"
-			self.token_expires_at = datetime.now() + timedelta(hours=1)
-			self.account_id = "demo_account_123"
-			self.base_uri = "https://demo.docusign.net"
+				self.access_token = token_data["access_token"]
+				self.refresh_token = token_data.get("refresh_token")
+				self.token_expires_at = datetime.now() + timedelta(seconds=token_data["expires_in"])
 
-			logger.info("DocuSign authenticated successfully")
-			return True
-
+				await self._get_user_info()
+				logger.info("DocuSign OAuth callback handled successfully")
+				return True
 		except Exception as e:
-			logger.error(f"DocuSign authentication failed: {e}")
+			logger.error(f"DocuSign OAuth callback failed: {e}")
+			return False
+
+	async def _get_user_info(self):
+		"""Get user information from DocuSign"""
+		if not self.access_token:
+			return
+
+		try:
+			async with httpx.AsyncClient() as client:
+				response = await client.get(
+					f"{self.auth_server_url}/oauth/userinfo",
+					headers={"Authorization": f"Bearer {self.access_token}"},
+				)
+				response.raise_for_status()
+				user_info = response.json()
+				accounts = user_info.get("accounts", [])
+				if accounts:
+					self.account_id = accounts[0].get("account_id")
+					self.base_uri = accounts[0].get("base_uri")
+					self.base_url = f"{self.base_uri}/restapi/v2.1"
+		except Exception as e:
+			logger.error(f"Failed to get DocuSign user info: {e}")
+
+	async def refresh_access_token(self) -> bool:
+		"""Refresh the DocuSign access token"""
+		if not self.refresh_token:
+			return False
+
+		try:
+			async with httpx.AsyncClient() as client:
+				response = await client.post(
+					f"{self.auth_server_url}/oauth/token",
+					headers={"Content-Type": "application/x-www-form-urlencoded"},
+					data={
+						"grant_type": "refresh_token",
+						"refresh_token": self.refresh_token,
+						"client_id": self.client_id,
+						"client_secret": self.client_secret,
+					},
+				)
+				response.raise_for_status()
+				token_data = response.json()
+
+				self.access_token = token_data["access_token"]
+				self.refresh_token = token_data.get("refresh_token", self.refresh_token)
+				self.token_expires_at = datetime.now() + timedelta(seconds=token_data["expires_in"])
+				logger.info("DocuSign access token refreshed successfully")
+				return True
+		except Exception as e:
+			logger.error(f"Failed to refresh DocuSign access token: {e}")
 			return False
 
 	async def _ensure_authenticated(self) -> bool:
 		"""Ensure we have a valid access token"""
 		if not self.access_token or (self.token_expires_at and datetime.now() >= self.token_expires_at):
-			return await self.authenticate()
+			if self.refresh_token:
+				return await self.refresh_access_token()
+			else:
+				# Here you would typically redirect the user to the authorization URL
+				# For a backend service, you might need to re-authenticate using a different grant type
+				logger.warning("DocuSign access token has expired and no refresh token is available.")
+				return False
 		return True
 
 	async def create_envelope(self, envelope: DocuSignEnvelope) -> Optional[str]:
 		"""Create a DocuSign envelope"""
+		if not await self._ensure_authenticated():
+			logger.error("DocuSign authentication failed")
+			return None
+
 		try:
-			if not await self._ensure_authenticated():
-				logger.error("DocuSign authentication failed")
-				return None
-
-			# For demo purposes, we'll simulate envelope creation
-			# In production, make actual API call to DocuSign
-			envelope_id = f"envelope_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{hash(envelope.email_subject) % 10000}"
-
-			logger.info(f"DocuSign: Created envelope {envelope_id} with {len(envelope.recipients)} recipients")
-
-			# Simulate API call
-			async with aiohttp.ClientSession() as session:
-				headers = {"Authorization": f"Bearer {self.access_token}", "Content-Type": "application/json"}
-
-				# Mock response for demo
-				logger.info("DocuSign: Envelope created successfully (simulated)")
-				return envelope_id
-
+			async with httpx.AsyncClient() as client:
+				response = await client.post(
+					f"{self.base_url}/accounts/{self.account_id}/envelopes",
+					headers={
+						"Authorization": f"Bearer {self.access_token}",
+						"Content-Type": "application/json",
+					},
+					json=envelope.dict(),
+				)
+				response.raise_for_status()
+				envelope_data = response.json()
+				logger.info(f"DocuSign: Created envelope {envelope_data['envelopeId']}")
+				return envelope_data["envelopeId"]
 		except Exception as e:
 			logger.error(f"Failed to create DocuSign envelope: {e}")
 			return None
 
 	async def send_envelope(self, envelope_id: str) -> bool:
 		"""Send a DocuSign envelope for signing"""
+		if not await self._ensure_authenticated():
+			logger.error("DocuSign authentication failed")
+			return False
+
 		try:
-			if not await self._ensure_authenticated():
-				logger.error("DocuSign authentication failed")
-				return False
-
-			# For demo purposes, we'll simulate sending
-			logger.info(f"DocuSign: Sending envelope {envelope_id}")
-
-			# Simulate API call
-			async with aiohttp.ClientSession() as session:
-				headers = {"Authorization": f"Bearer {self.access_token}", "Content-Type": "application/json"}
-
-				# Mock response for demo
-				logger.info("DocuSign: Envelope sent successfully (simulated)")
+			async with httpx.AsyncClient() as client:
+				response = await client.put(
+					f"{self.base_url}/accounts/{self.account_id}/envelopes/{envelope_id}",
+					headers={
+						"Authorization": f"Bearer {self.access_token}",
+						"Content-Type": "application/json",
+					},
+					json={"status": "sent"},
+				)
+				response.raise_for_status()
+				logger.info(f"DocuSign: Sent envelope {envelope_id}")
 				return True
-
 		except Exception as e:
 			logger.error(f"Failed to send DocuSign envelope: {e}")
 			return False
 
 	async def get_envelope_status(self, envelope_id: str) -> Optional[Dict[str, Any]]:
 		"""Get envelope status"""
+		if not await self._ensure_authenticated():
+			logger.error("DocuSign authentication failed")
+			return None
+
 		try:
-			if not await self._ensure_authenticated():
-				logger.error("DocuSign authentication failed")
-				return None
-
-			# For demo purposes, return mock status
-			statuses = ["created", "sent", "delivered", "signed", "completed"]
-			current_status = statuses[hash(envelope_id) % len(statuses)]
-
-			return {
-				"envelope_id": envelope_id,
-				"status": current_status,
-				"status_changed_date_time": datetime.now().isoformat(),
-				"created_date_time": (datetime.now() - timedelta(hours=1)).isoformat(),
-				"sent_date_time": (datetime.now() - timedelta(minutes=30)).isoformat() if current_status != "created" else None,
-				"completed_date_time": (datetime.now() - timedelta(minutes=5)).isoformat() if current_status == "completed" else None,
-				"recipients": {
-					"signers": [
-						{
-							"recipient_id": "1",
-							"name": "John Doe",
-							"email": "john.doe@example.com",
-							"status": "signed" if current_status == "completed" else "sent",
-							"signed_date_time": (datetime.now() - timedelta(minutes=5)).isoformat() if current_status == "completed" else None,
-						}
-					]
-				},
-			}
-
+			async with httpx.AsyncClient() as client:
+				response = await client.get(
+					f"{self.base_url}/accounts/{self.account_id}/envelopes/{envelope_id}",
+					headers={"Authorization": f"Bearer {self.access_token}"},
+				)
+				response.raise_for_status()
+				return response.json()
 		except Exception as e:
 			logger.error(f"Failed to get DocuSign envelope status: {e}")
 			return None
 
 	async def void_envelope(self, envelope_id: str, reason: str) -> bool:
 		"""Void a DocuSign envelope"""
+		if not await self._ensure_authenticated():
+			logger.error("DocuSign authentication failed")
+			return False
+
 		try:
-			if not await self._ensure_authenticated():
-				logger.error("DocuSign authentication failed")
-				return False
-
-			logger.info(f"DocuSign: Voiding envelope {envelope_id} - {reason}")
-
-			# Simulate API call
-			async with aiohttp.ClientSession() as session:
-				headers = {"Authorization": f"Bearer {self.access_token}", "Content-Type": "application/json"}
-
-				# Mock response for demo
-				logger.info("DocuSign: Envelope voided successfully (simulated)")
+			async with httpx.AsyncClient() as client:
+				response = await client.put(
+					f"{self.base_url}/accounts/{self.account_id}/envelopes/{envelope_id}",
+					headers={
+						"Authorization": f"Bearer {self.access_token}",
+						"Content-Type": "application/json",
+					},
+					json={"status": "voided", "voidedReason": reason},
+				)
+				response.raise_for_status()
+				logger.info(f"DocuSign: Voided envelope {envelope_id}")
 				return True
-
 		except Exception as e:
 			logger.error(f"Failed to void DocuSign envelope: {e}")
 			return False
 
 	async def get_document(self, envelope_id: str, document_id: str) -> Optional[bytes]:
 		"""Get document from envelope"""
+		if not await self._ensure_authenticated():
+			logger.error("DocuSign authentication failed")
+			return None
+
 		try:
-			if not await self._ensure_authenticated():
-				logger.error("DocuSign authentication failed")
-				return None
-
-			logger.info(f"DocuSign: Getting document {document_id} from envelope {envelope_id}")
-
-			# For demo purposes, return mock document
-			mock_document = b"Mock PDF document content for demo purposes"
-
-			# Simulate API call
-			async with aiohttp.ClientSession() as session:
-				headers = {"Authorization": f"Bearer {self.access_token}", "Accept": "application/pdf"}
-
-				# Mock response for demo
-				logger.info("DocuSign: Document retrieved successfully (simulated)")
-				return mock_document
-
+			async with httpx.AsyncClient() as client:
+				response = await client.get(
+					f"{self.base_url}/accounts/{self.account_id}/envelopes/{envelope_id}/documents/{document_id}",
+					headers={"Authorization": f"Bearer {self.access_token}"},
+				)
+				response.raise_for_status()
+				return response.content
 		except Exception as e:
 			logger.error(f"Failed to get DocuSign document: {e}")
 			return None
@@ -267,105 +327,78 @@ class DocuSignService:
 			logger.error(f"Failed to create contract envelope: {e}")
 			return None
 
-	async def get_signing_url(self, envelope_id: str, recipient_email: str) -> Optional[str]:
+	async def get_signing_url(self, envelope_id: str, recipient_email: str, recipient_name: str, return_url: str) -> Optional[str]:
 		"""Get signing URL for a recipient"""
+		if not await self._ensure_authenticated():
+			logger.error("DocuSign authentication failed")
+			return None
+
 		try:
-			if not await self._ensure_authenticated():
-				logger.error("DocuSign authentication failed")
-				return None
-
-			# For demo purposes, return mock signing URL
-			mock_url = f"https://demo.docusign.net/signing/ds/{envelope_id}?recipient={recipient_email}"
-
-			logger.info(f"DocuSign: Generated signing URL for {recipient_email}")
-			return mock_url
-
+			async with httpx.AsyncClient() as client:
+				response = await client.post(
+					f"{self.base_url}/accounts/{self.account_id}/envelopes/{envelope_id}/views/recipient",
+					headers={
+						"Authorization": f"Bearer {self.access_token}",
+						"Content-Type": "application/json",
+					},
+					json={
+						"returnUrl": return_url,
+						"authenticationMethod": "none",
+						"email": recipient_email,
+						"userName": recipient_name,
+					},
+				)
+				response.raise_for_status()
+				view_data = response.json()
+				return view_data["url"]
 		except Exception as e:
 			logger.error(f"Failed to get signing URL: {e}")
 			return None
 
 	async def get_account_info(self) -> Optional[Dict[str, Any]]:
 		"""Get DocuSign account information"""
+		if not await self._ensure_authenticated():
+			logger.error("DocuSign authentication failed")
+			return None
+
 		try:
-			if not await self._ensure_authenticated():
-				logger.error("DocuSign authentication failed")
-				return None
-
-			# For demo purposes, return mock account info
-			return {
-				"account_id": self.account_id,
-				"account_name": "Demo Account",
-				"base_uri": self.base_uri,
-				"is_default": True,
-				"user_id": "demo_user_123",
-				"user_name": "Contract Analyzer",
-				"email": "analyzer@contractanalyzer.com",
-				"created_date": "2024-01-01T00:00:00Z",
-				"plan_name": "Professional",
-				"plan_expiration": "2025-01-01T00:00:00Z",
-			}
-
+			async with httpx.AsyncClient() as client:
+				response = await client.get(
+					f"{self.base_url}/accounts/{self.account_id}",
+					headers={"Authorization": f"Bearer {self.access_token}"},
+				)
+				response.raise_for_status()
+				return response.json()
 		except Exception as e:
 			logger.error(f"Failed to get DocuSign account info: {e}")
 			return None
 
 	async def test_connection(self) -> Dict[str, Any]:
 		"""Test DocuSign connection"""
-		try:
-			if not await self.authenticate():
-				return {"success": False, "message": "DocuSign authentication failed", "error": "Invalid credentials or service unavailable"}
-
-			# Test account info retrieval
-			account_info = await self.get_account_info()
-
-			return {
-				"success": True,
-				"message": "DocuSign connection successful",
-				"service": "DocuSign",
-				"authenticated": True,
-				"account_id": self.account_id,
-				"base_uri": self.base_uri,
-				"token_expires": self.token_expires_at.isoformat() if self.token_expires_at else None,
-				"account_info": account_info,
-			}
-
-		except Exception as e:
-			return {"success": False, "message": f"DocuSign connection test failed: {e!s}", "error": str(e)}
+		if not self.enabled:
+			return {"success": False, "message": "DocuSign is not enabled"}
+			
+		auth_url = self.get_authorization_url()
+		return {
+			"success": True,
+			"message": "DocuSign is enabled. To authenticate, please navigate to the following URL",
+			"authorization_url": auth_url
+		}
 
 	async def get_templates(self) -> List[Dict[str, Any]]:
 		"""Get available DocuSign templates"""
+		if not await self._ensure_authenticated():
+			return []
+
 		try:
-			if not await self._ensure_authenticated():
-				return []
-
-			# For demo purposes, return mock templates
-			return [
-				{
-					"template_id": "template_contract_001",
-					"name": "Standard Contract Template",
-					"description": "Basic contract template for general use",
-					"created_date": "2024-01-01T00:00:00Z",
-					"modified_date": "2024-01-15T00:00:00Z",
-					"status": "active",
-				},
-				{
-					"template_id": "template_nda_001",
-					"name": "NDA Template",
-					"description": "Non-disclosure agreement template",
-					"created_date": "2024-01-02T00:00:00Z",
-					"modified_date": "2024-01-16T00:00:00Z",
-					"status": "active",
-				},
-				{
-					"template_id": "template_service_001",
-					"name": "Service Agreement Template",
-					"description": "Service agreement template with standard terms",
-					"created_date": "2024-01-03T00:00:00Z",
-					"modified_date": "2024-01-17T00:00:00Z",
-					"status": "active",
-				},
-			]
-
+			async with httpx.AsyncClient() as client:
+				response = await client.get(
+					f"{self.base_url}/accounts/{self.account_id}/templates",
+					headers={"Authorization": f"Bearer {self.access_token}"},
+				)
+				response.raise_for_status()
+				templates_data = response.json()
+				return templates_data.get("envelopeTemplates", [])
 		except Exception as e:
 			logger.error(f"Failed to get DocuSign templates: {e}")
 			return []

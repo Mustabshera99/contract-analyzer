@@ -8,7 +8,7 @@ import os
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-import aiohttp
+import httpx
 from pydantic import BaseModel
 
 from ..core.config import get_settings
@@ -95,8 +95,7 @@ class GmailService:
 			logger.info(f"Gmail: Sending email to {message.to} with subject '{message.subject}'")
 
 			# Simulate API call
-			async with aiohttp.ClientSession() as session:
-				headers = {"Authorization": f"Bearer {self.access_token}", "Content-Type": "application/json"}
+			           async with httpx.AsyncClient() as session:				headers = {"Authorization": f"Bearer {self.access_token}", "Content-Type": "application/json"}
 
 				# Mock response for demo
 				logger.info("Gmail: Email sent successfully (simulated)")

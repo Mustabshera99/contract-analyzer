@@ -240,13 +240,13 @@ class StartupValidator:
         
         # Check external connectivity
         try:
-            import aiohttp
-            async with aiohttp.ClientSession() as session:
-                async with session.get('https://api.openai.com/v1/models', timeout=5) as response:
-                    if response.status == 200:
-                        logger.debug("External connectivity to OpenAI successful")
-                    else:
-                        self.warnings.append(f"OpenAI API returned status {response.status}")
+            import httpx
+            async with httpx.AsyncClient() as client:
+                response = await client.get('https://api.openai.com/v1/models', timeout=5)
+                if response.status_code == 200:
+                    logger.debug("External connectivity to OpenAI successful")
+                else:
+                    self.warnings.append(f"OpenAI API returned status {response.status_code}")
         except Exception as e:
             self.warnings.append(f"External connectivity check failed: {e}")
     

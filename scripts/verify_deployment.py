@@ -15,7 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Tuple, Any
 
-import aiohttp
+import httpx
 import requests
 from colorama import init, Fore, Style
 
@@ -34,17 +34,15 @@ class DeploymentVerifier:
             "tests": [],
             "summary": {"passed": 0, "failed": 0, "warnings": 0}
         }
-        self.session = None
+        self.client = httpx.AsyncClient(base_url=base_url)
     
     async def __aenter__(self):
         """Async context manager entry."""
-        self.session = aiohttp.ClientSession()
         return self
     
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit."""
-        if self.session:
-            await self.session.close()
+        await self.client.aclose()
     
     def log_test(self, name: str, status: str, message: str = "", details: Dict = None):
         """Log test result."""
@@ -73,24 +71,24 @@ class DeploymentVerifier:
         print(f"\n{Fore.CYAN}🔍 Testing API Connectivity...")
         
         try:
-            async with self.session.get(f"{self.api_base}/health", timeout=10) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    self.log_test(
-                        "API Connectivity",
-                        "passed",
-                        f"API is reachable (status: {data.get('status', 'unknown')})",
-                        {"status_code": response.status, "response_data": data}
-                    )
-                    return True
-                else:
-                    self.log_test(
-                        "API Connectivity",
-                        "failed",
-                        f"API returned status {response.status}",
-                        {"status_code": response.status}
-                    )
-                    return False
+            response = await self.client.get(f"{self.api_base}/health", timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                self.log_test(
+                    "API Connectivity",
+                    "passed",
+                    f"API is reachable (status: {data.get('status', 'unknown')})",
+                    {"status_code": response.status_code, "response_data": data}
+                )
+                return True
+            else:
+                self.log_test(
+                    "API Connectivity",
+                    "failed",
+                    f"API returned status {response.status_code}",
+                    {"status_code": response.status_code}
+                )
+                return False
         except Exception as e:
             self.log_test(
                 "API Connectivity",
@@ -113,22 +111,22 @@ class DeploymentVerifier:
         
         for endpoint, name in endpoints:
             try:
-                async with self.session.get(f"{self.api_base}{endpoint}", timeout=5) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        self.log_test(
-                            name,
-                            "passed",
-                            f"Endpoint responding correctly",
-                            {"status_code": response.status, "endpoint": endpoint}
-                        )
-                    else:
-                        self.log_test(
-                            name,
-                            "failed",
-                            f"Endpoint returned status {response.status}",
-                            {"status_code": response.status, "endpoint": endpoint}
-                        )
+                response = await self.client.get(f"{self.api_base}{endpoint}", timeout=5)
+                if response.status_code == 200:
+                    data = response.json()
+                    self.log_test(
+                        name,
+                        "passed",
+                        f"Endpoint responding correctly",
+                        {"status_code": response.status_code, "endpoint": endpoint}
+                    )
+                else:
+                    self.log_test(
+                        name,
+                        "failed",
+                        f"Endpoint returned status {response.status_code}",
+                        {"status_code": response.status_code, "endpoint": endpoint}
+                    )
             except Exception as e:
                 self.log_test(
                     name,
@@ -143,30 +141,30 @@ class DeploymentVerifier:
         
         # Test OpenAPI schema
         try:
-            async with self.session.get(f"{self.base_url}/openapi.json", timeout=5) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    if "openapi" in data and "paths" in data:
-                        self.log_test(
-                            "OpenAPI Schema",
-                            "passed",
-                            f"OpenAPI schema available with {len(data.get('paths', {}))} endpoints",
-                            {"endpoint_count": len(data.get('paths', {}))}
-                        )
-                    else:
-                        self.log_test(
-                            "OpenAPI Schema",
-                            "failed",
-                            "OpenAPI schema is malformed",
-                            {"response_data": data}
-                        )
+            response = await self.client.get(f"{self.base_url}/openapi.json", timeout=5)
+            if response.status_code == 200:
+                data = response.json()
+                if "openapi" in data and "paths" in data:
+                    self.log_test(
+                        "OpenAPI Schema",
+                        "passed",
+                        f"OpenAPI schema available with {len(data.get('paths', {}))} endpoints",
+                        {"endpoint_count": len(data.get('paths', {}))}
+                    )
                 else:
                     self.log_test(
                         "OpenAPI Schema",
                         "failed",
-                        f"OpenAPI schema returned status {response.status}",
-                        {"status_code": response.status}
+                        "OpenAPI schema is malformed",
+                        {"response_data": data}
                     )
+            else:
+                self.log_test(
+                    "OpenAPI Schema",
+                    "failed",
+                    f"OpenAPI schema returned status {response.status_code}",
+                    {"status_code": response.status_code}
+                )
         except Exception as e:
             self.log_test(
                 "OpenAPI Schema",
@@ -177,21 +175,21 @@ class DeploymentVerifier:
         
         # Test Swagger UI
         try:
-            async with self.session.get(f"{self.base_url}/docs", timeout=5) as response:
-                if response.status == 200:
-                    self.log_test(
-                        "Swagger UI",
-                        "passed",
-                        "Swagger UI is available",
-                        {"status_code": response.status}
-                    )
-                else:
-                    self.log_test(
-                        "Swagger UI",
-                        "warnings",
-                        f"Swagger UI returned status {response.status} (may be disabled in production)",
-                        {"status_code": response.status}
-                    )
+            response = await self.client.get(f"{self.base_url}/docs", timeout=5)
+            if response.status_code == 200:
+                self.log_test(
+                    "Swagger UI",
+                    "passed",
+                    "Swagger UI is available",
+                    {"status_code": response.status_code}
+                )
+            else:
+                self.log_test(
+                    "Swagger UI",
+                    "warnings",
+                    f"Swagger UI returned status {response.status_code} (may be disabled in production)",
+                    {"status_code": response.status_code}
+                )
         except Exception as e:
             self.log_test(
                 "Swagger UI",
@@ -206,21 +204,21 @@ class DeploymentVerifier:
         
         # Test with no file
         try:
-            async with self.session.post(f"{self.api_base}/analyze-contract") as response:
-                if response.status == 422:
-                    self.log_test(
-                        "No File Validation",
-                        "passed",
-                        "Correctly rejects requests without files",
-                        {"status_code": response.status}
-                    )
-                else:
-                    self.log_test(
-                        "No File Validation",
-                        "failed",
-                        f"Expected 422, got {response.status}",
-                        {"status_code": response.status}
-                    )
+            response = await self.client.post(f"{self.api_base}/analyze-contract")
+            if response.status_code == 422:
+                self.log_test(
+                    "No File Validation",
+                    "passed",
+                    "Correctly rejects requests without files",
+                    {"status_code": response.status_code}
+                )
+            else:
+                self.log_test(
+                    "No File Validation",
+                    "failed",
+                    f"Expected 422, got {response.status_code}",
+                    {"status_code": response.status_code}
+                )
         except Exception as e:
             self.log_test(
                 "No File Validation",
@@ -231,24 +229,22 @@ class DeploymentVerifier:
         
         # Test with invalid file type
         try:
-            data = aiohttp.FormData()
-            data.add_field('file', b'This is not a PDF', filename='test.txt', content_type='text/plain')
-            
-            async with self.session.post(f"{self.api_base}/analyze-contract", data=data) as response:
-                if response.status == 415:
-                    self.log_test(
-                        "Invalid File Type Validation",
-                        "passed",
-                        "Correctly rejects invalid file types",
-                        {"status_code": response.status}
-                    )
-                else:
-                    self.log_test(
-                        "Invalid File Type Validation",
-                        "failed",
-                        f"Expected 415, got {response.status}",
-                        {"status_code": response.status}
-                    )
+            files = {'file': ('test.txt', b'This is not a PDF', 'text/plain')}
+            response = await self.client.post(f"{self.api_base}/analyze-contract", files=files)
+            if response.status_code == 415:
+                self.log_test(
+                    "Invalid File Type Validation",
+                    "passed",
+                    "Correctly rejects invalid file types",
+                    {"status_code": response.status_code}
+                )
+            else:
+                self.log_test(
+                    "Invalid File Type Validation",
+                    "failed",
+                    f"Expected 415, got {response.status_code}",
+                    {"status_code": response.status_code}
+                )
         except Exception as e:
             self.log_test(
                 "Invalid File Type Validation",
@@ -265,47 +261,45 @@ class DeploymentVerifier:
         test_pdf = self._create_test_pdf()
         
         try:
-            data = aiohttp.FormData()
-            data.add_field('file', test_pdf, filename='test_contract.pdf', content_type='application/pdf')
-            
+            files = {'file': ('test_contract.pdf', test_pdf, 'application/pdf')}
             start_time = time.time()
-            async with self.session.post(f"{self.api_base}/analyze-contract", data=data) as response:
-                processing_time = time.time() - start_time
+            response = await self.client.post(f"{self.api_base}/analyze-contract", files=files)
+            processing_time = time.time() - start_time
+            
+            if response.status_code == 200:
+                result = response.json()
                 
-                if response.status == 200:
-                    result = await response.json()
-                    
-                    # Validate response structure
-                    required_fields = ["risky_clauses", "suggested_redlines", "email_draft", "status"]
-                    missing_fields = [field for field in required_fields if field not in result]
-                    
-                    if not missing_fields:
-                        self.log_test(
-                            "Synchronous Analysis",
-                            "passed",
-                            f"Analysis completed in {processing_time:.2f}s",
-                            {
-                                "processing_time": processing_time,
-                                "risky_clauses_count": len(result.get("risky_clauses", [])),
-                                "redlines_count": len(result.get("suggested_redlines", [])),
-                                "risk_score": result.get("overall_risk_score")
-                            }
-                        )
-                    else:
-                        self.log_test(
-                            "Synchronous Analysis",
-                            "failed",
-                            f"Missing required fields: {missing_fields}",
-                            {"missing_fields": missing_fields, "response_data": result}
-                        )
+                # Validate response structure
+                required_fields = ["risky_clauses", "suggested_redlines", "email_draft", "status"]
+                missing_fields = [field for field in required_fields if field not in result]
+                
+                if not missing_fields:
+                    self.log_test(
+                        "Synchronous Analysis",
+                        "passed",
+                        f"Analysis completed in {processing_time:.2f}s",
+                        {
+                            "processing_time": processing_time,
+                            "risky_clauses_count": len(result.get("risky_clauses", [])),
+                            "redlines_count": len(result.get("suggested_redlines", [])),
+                            "risk_score": result.get("overall_risk_score")
+                        }
+                    )
                 else:
-                    error_text = await response.text()
                     self.log_test(
                         "Synchronous Analysis",
                         "failed",
-                        f"Analysis failed with status {response.status}",
-                        {"status_code": response.status, "error": error_text}
+                        f"Missing required fields: {missing_fields}",
+                        {"missing_fields": missing_fields, "response_data": result}
                     )
+            else:
+                error_text = response.text
+                self.log_test(
+                    "Synchronous Analysis",
+                    "failed",
+                    f"Analysis failed with status {response.status_code}",
+                    {"status_code": response.status_code, "error": error_text}
+                )
         except Exception as e:
             self.log_test(
                 "Synchronous Analysis",
@@ -323,41 +317,41 @@ class DeploymentVerifier:
         
         try:
             # Start async analysis
-            data = aiohttp.FormData()
-            data.add_field('file', test_pdf, filename='test_contract.pdf', content_type='application/pdf')
-            data.add_field('timeout_seconds', '60')
-            data.add_field('priority', 'normal')
-            
-            async with self.session.post(f"{self.api_base}/analyze-contract/async", data=data) as response:
-                if response.status == 202:
-                    task_info = await response.json()
-                    task_id = task_info.get("task_id")
+            files = {
+                'file': ('test_contract.pdf', test_pdf, 'application/pdf'),
+                'timeout_seconds': (None, '60'),
+                'priority': (None, 'normal'),
+            }
+            response = await self.client.post(f"{self.api_base}/analyze-contract/async", files=files)
+            if response.status_code == 202:
+                task_info = response.json()
+                task_id = task_info.get("task_id")
+                
+                if task_id:
+                    self.log_test(
+                        "Async Analysis Start",
+                        "passed",
+                        f"Analysis task started: {task_id}",
+                        {"task_id": task_id, "status": task_info.get("status")}
+                    )
                     
-                    if task_id:
-                        self.log_test(
-                            "Async Analysis Start",
-                            "passed",
-                            f"Analysis task started: {task_id}",
-                            {"task_id": task_id, "status": task_info.get("status")}
-                        )
-                        
-                        # Monitor progress
-                        await self._monitor_async_analysis(task_id)
-                    else:
-                        self.log_test(
-                            "Async Analysis Start",
-                            "failed",
-                            "No task ID returned",
-                            {"response_data": task_info}
-                        )
+                    # Monitor progress
+                    await self._monitor_async_analysis(task_id)
                 else:
-                    error_text = await response.text()
                     self.log_test(
                         "Async Analysis Start",
                         "failed",
-                        f"Failed to start analysis: {response.status}",
-                        {"status_code": response.status, "error": error_text}
+                        "No task ID returned",
+                        {"response_data": task_info}
                     )
+            else:
+                error_text = response.text
+                self.log_test(
+                    "Async Analysis Start",
+                    "failed",
+                    f"Failed to start analysis: {response.status_code}",
+                    {"status_code": response.status_code, "error": error_text}
+                )
         except Exception as e:
             self.log_test(
                 "Async Analysis Start",
@@ -373,54 +367,54 @@ class DeploymentVerifier:
         
         while time.time() - start_time < max_wait:
             try:
-                async with self.session.get(f"{self.api_base}/analyze-contract/async/{task_id}/status") as response:
-                    if response.status == 200:
-                        status_data = await response.json()
-                        current_status = status_data.get("status")
-                        
-                        if current_status in ["completed", "failed", "timeout"]:
-                            if current_status == "completed":
-                                # Get results
-                                async with self.session.get(f"{self.api_base}/analyze-contract/async/{task_id}/result") as result_response:
-                                    if result_response.status == 200:
-                                        result = await result_response.json()
-                                        self.log_test(
-                                            "Async Analysis Completion",
-                                            "passed",
-                                            f"Analysis completed successfully",
-                                            {
-                                                "task_id": task_id,
-                                                "risky_clauses_count": len(result.get("risky_clauses", [])),
-                                                "redlines_count": len(result.get("suggested_redlines", [])),
-                                                "risk_score": result.get("overall_risk_score")
-                                            }
-                                        )
-                                    else:
-                                        self.log_test(
-                                            "Async Analysis Completion",
-                                            "failed",
-                                            f"Failed to get results: {result_response.status}",
-                                            {"status_code": result_response.status}
-                                        )
+                response = await self.client.get(f"{self.api_base}/analyze-contract/async/{task_id}/status")
+                if response.status_code == 200:
+                    status_data = response.json()
+                    current_status = status_data.get("status")
+                    
+                    if current_status in ["completed", "failed", "timeout"]:
+                        if current_status == "completed":
+                            # Get results
+                            result_response = await self.client.get(f"{self.api_base}/analyze-contract/async/{task_id}/result")
+                            if result_response.status_code == 200:
+                                result = result_response.json()
+                                self.log_test(
+                                    "Async Analysis Completion",
+                                    "passed",
+                                    f"Analysis completed successfully",
+                                    {
+                                        "task_id": task_id,
+                                        "risky_clauses_count": len(result.get("risky_clauses", [])),
+                                        "redlines_count": len(result.get("suggested_redlines", [])),
+                                        "risk_score": result.get("overall_risk_score")
+                                    }
+                                )
                             else:
                                 self.log_test(
                                     "Async Analysis Completion",
                                     "failed",
-                                    f"Analysis {current_status}",
-                                    {"task_id": task_id, "status": current_status}
+                                    f"Failed to get results: {result_response.status_code}",
+                                    {"status_code": result_response.status_code}
                                 )
-                            break
                         else:
-                            # Still running, wait a bit
-                            await asyncio.sleep(2)
-                    else:
-                        self.log_test(
-                            "Async Analysis Monitoring",
-                            "failed",
-                            f"Status check failed: {response.status}",
-                            {"status_code": response.status}
-                        )
+                            self.log_test(
+                                "Async Analysis Completion",
+                                "failed",
+                                f"Analysis {current_status}",
+                                {"task_id": task_id, "status": current_status}
+                            )
                         break
+                    else:
+                        # Still running, wait a bit
+                        await asyncio.sleep(2)
+                else:
+                    self.log_test(
+                        "Async Analysis Monitoring",
+                        "failed",
+                        f"Status check failed: {response.status_code}",
+                        {"status_code": response.status_code}
+                    )
+                    break
             except Exception as e:
                 self.log_test(
                     "Async Analysis Monitoring",
@@ -442,34 +436,34 @@ class DeploymentVerifier:
         print(f"\n{Fore.CYAN}📊 Testing Service Metrics...")
         
         try:
-            async with self.session.get(f"{self.api_base}/analyze-contract/service/metrics") as response:
-                if response.status == 200:
-                    metrics = await response.json()
-                    
-                    required_metrics = ["total_tasks", "active_tasks", "completed_tasks", "failed_tasks"]
-                    missing_metrics = [metric for metric in required_metrics if metric not in metrics]
-                    
-                    if not missing_metrics:
-                        self.log_test(
-                            "Service Metrics",
-                            "passed",
-                            f"Metrics available with {len(metrics)} data points",
-                            {"metrics_count": len(metrics), "metrics": metrics}
-                        )
-                    else:
-                        self.log_test(
-                            "Service Metrics",
-                            "failed",
-                            f"Missing required metrics: {missing_metrics}",
-                            {"missing_metrics": missing_metrics, "available_metrics": list(metrics.keys())}
-                        )
+            response = await self.client.get(f"{self.api_base}/analyze-contract/service/metrics")
+            if response.status_code == 200:
+                metrics = response.json()
+                
+                required_metrics = ["total_tasks", "active_tasks", "completed_tasks", "failed_tasks"]
+                missing_metrics = [metric for metric in required_metrics if metric not in metrics]
+                
+                if not missing_metrics:
+                    self.log_test(
+                        "Service Metrics",
+                        "passed",
+                        f"Metrics available with {len(metrics)} data points",
+                        {"metrics_count": len(metrics), "metrics": metrics}
+                    )
                 else:
                     self.log_test(
                         "Service Metrics",
                         "failed",
-                        f"Metrics endpoint returned status {response.status}",
-                        {"status_code": response.status}
+                        f"Missing required metrics: {missing_metrics}",
+                        {"missing_metrics": missing_metrics, "available_metrics": list(metrics.keys())}
                     )
+            else:
+                self.log_test(
+                    "Service Metrics",
+                    "failed",
+                    f"Metrics endpoint returned status {response.status_code}",
+                    {"status_code": response.status_code}
+                )
         except Exception as e:
             self.log_test(
                 "Service Metrics",
@@ -483,34 +477,34 @@ class DeploymentVerifier:
         print(f"\n{Fore.CYAN}🔌 Testing WebSocket Endpoints...")
         
         try:
-            async with self.session.get(f"{self.api_base}/ws/stats") as response:
-                if response.status == 200:
-                    stats = await response.json()
-                    
-                    required_fields = ["total_connections", "active_tasks"]
-                    missing_fields = [field for field in required_fields if field not in stats]
-                    
-                    if not missing_fields:
-                        self.log_test(
-                            "WebSocket Stats",
-                            "passed",
-                            f"WebSocket stats available",
-                            {"stats": stats}
-                        )
-                    else:
-                        self.log_test(
-                            "WebSocket Stats",
-                            "failed",
-                            f"Missing required fields: {missing_fields}",
-                            {"missing_fields": missing_fields, "available_fields": list(stats.keys())}
-                        )
+            response = await self.client.get(f"{self.api_base}/ws/stats")
+            if response.status_code == 200:
+                stats = response.json()
+                
+                required_fields = ["total_connections", "active_tasks"]
+                missing_fields = [field for field in required_fields if field not in stats]
+                
+                if not missing_fields:
+                    self.log_test(
+                        "WebSocket Stats",
+                        "passed",
+                        f"WebSocket stats available",
+                        {"stats": stats}
+                    )
                 else:
                     self.log_test(
                         "WebSocket Stats",
                         "failed",
-                        f"WebSocket stats returned status {response.status}",
-                        {"status_code": response.status}
+                        f"Missing required fields: {missing_fields}",
+                        {"missing_fields": missing_fields, "available_fields": list(stats.keys())}
                     )
+            else:
+                self.log_test(
+                    "WebSocket Stats",
+                    "failed",
+                    f"WebSocket stats returned status {response.status_code}",
+                    {"status_code": response.status_code}
+                )
         except Exception as e:
             self.log_test(
                 "WebSocket Stats",
@@ -525,21 +519,21 @@ class DeploymentVerifier:
         
         # Test invalid task ID
         try:
-            async with self.session.get(f"{self.api_base}/analyze-contract/async/invalid_task_id/status") as response:
-                if response.status == 404:
-                    self.log_test(
-                        "Invalid Task ID Handling",
-                        "passed",
-                        "Correctly returns 404 for invalid task ID",
-                        {"status_code": response.status}
-                    )
-                else:
-                    self.log_test(
-                        "Invalid Task ID Handling",
-                        "failed",
-                        f"Expected 404, got {response.status}",
-                        {"status_code": response.status}
-                    )
+            response = await self.client.get(f"{self.api_base}/analyze-contract/async/invalid_task_id/status")
+            if response.status_code == 404:
+                self.log_test(
+                    "Invalid Task ID Handling",
+                    "passed",
+                    "Correctly returns 404 for invalid task ID",
+                    {"status_code": response.status_code}
+                )
+            else:
+                self.log_test(
+                    "Invalid Task ID Handling",
+                    "failed",
+                    f"Expected 404, got {response.status_code}",
+                    {"status_code": response.status_code}
+                )
         except Exception as e:
             self.log_test(
                 "Invalid Task ID Handling",
@@ -550,21 +544,21 @@ class DeploymentVerifier:
         
         # Test cancel invalid task
         try:
-            async with self.session.delete(f"{self.api_base}/analyze-contract/async/invalid_task_id") as response:
-                if response.status == 404:
-                    self.log_test(
-                        "Cancel Invalid Task Handling",
-                        "passed",
-                        "Correctly returns 404 for canceling invalid task",
-                        {"status_code": response.status}
-                    )
-                else:
-                    self.log_test(
-                        "Cancel Invalid Task Handling",
-                        "failed",
-                        f"Expected 404, got {response.status}",
-                        {"status_code": response.status}
-                    )
+            response = await self.client.delete(f"{self.api_base}/analyze-contract/async/invalid_task_id")
+            if response.status_code == 404:
+                self.log_test(
+                    "Cancel Invalid Task Handling",
+                    "passed",
+                    "Correctly returns 404 for canceling invalid task",
+                    {"status_code": response.status_code}
+                )
+            else:
+                self.log_test(
+                    "Cancel Invalid Task Handling",
+                    "failed",
+                    f"Expected 404, got {response.status_code}",
+                    {"status_code": response.status_code}
+                )
         except Exception as e:
             self.log_test(
                 "Cancel Invalid Task Handling",
@@ -580,30 +574,30 @@ class DeploymentVerifier:
         # Test health check response time
         try:
             start_time = time.time()
-            async with self.session.get(f"{self.api_base}/health", timeout=5) as response:
-                response_time = time.time() - start_time
-                
-                if response.status == 200 and response_time < 1.0:
-                    self.log_test(
-                        "Health Check Performance",
-                        "passed",
-                        f"Health check responded in {response_time:.3f}s",
-                        {"response_time": response_time}
-                    )
-                elif response.status == 200:
-                    self.log_test(
-                        "Health Check Performance",
-                        "warnings",
-                        f"Health check slow: {response_time:.3f}s (expected < 1.0s)",
-                        {"response_time": response_time}
-                    )
-                else:
-                    self.log_test(
-                        "Health Check Performance",
-                        "failed",
-                        f"Health check failed with status {response.status}",
-                        {"status_code": response.status, "response_time": response_time}
-                    )
+            response = await self.client.get(f"{self.api_base}/health", timeout=5)
+            response_time = time.time() - start_time
+            
+            if response.status_code == 200 and response_time < 1.0:
+                self.log_test(
+                    "Health Check Performance",
+                    "passed",
+                    f"Health check responded in {response_time:.3f}s",
+                    {"response_time": response_time}
+                )
+            elif response.status_code == 200:
+                self.log_test(
+                    "Health Check Performance",
+                    "warnings",
+                    f"Health check slow: {response_time:.3f}s (expected < 1.0s)",
+                    {"response_time": response_time}
+                )
+            else:
+                self.log_test(
+                    "Health Check Performance",
+                    "failed",
+                    f"Health check failed with status {response.status_code}",
+                    {"status_code": response.status_code, "response_time": response_time}
+                )
         except Exception as e:
             self.log_test(
                 "Health Check Performance",

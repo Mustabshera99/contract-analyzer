@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
-import aiohttp
+import httpx
 
 from ..core.config import get_settings
 
@@ -90,21 +90,10 @@ class HubSpotService:
 			url = f"{self.base_url}{endpoint}"
 			headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
-			async with aiohttp.ClientSession() as session:
-				if method.upper() == "GET":
-					async with session.get(url, headers=headers, params=params) as response:
-						return await response.json()
-				elif method.upper() == "POST":
-					async with session.post(url, headers=headers, json=data) as response:
-						return await response.json()
-				elif method.upper() == "PUT":
-					async with session.put(url, headers=headers, json=data) as response:
-						return await response.json()
-				elif method.upper() == "DELETE":
-					async with session.delete(url, headers=headers) as response:
-						return await response.json()
-				else:
-					raise ValueError(f"Unsupported HTTP method: {method}")
+			async with httpx.AsyncClient() as client:
+				response = await client.request(method, url, headers=headers, json=data, params=params)
+				response.raise_for_status()
+				return response.json()
 
 		except Exception as e:
 			logger.error(f"HubSpot API request failed: {e}")

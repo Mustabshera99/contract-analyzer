@@ -14,7 +14,7 @@ An AI-powered contract analysis and negotiation assistance platform with enterpr
 
 ## 🏗️ Architecture
 
-This project uses a modern, decoupled architecture to separate concerns and ensure scalability.
+This project uses a modern, decoupled architecture with clear separation of concerns and optimized dependencies.
 
 | Component             | Technology                                      |
 | --------------------- | ----------------------------------------------- |
@@ -24,9 +24,17 @@ This project uses a modern, decoupled architecture to separate concerns and ensu
 | **Vector Store**      | ChromaDB                                        |
 | **Database**          | PostgreSQL                                      |
 | **Caching**           | Redis                                           |
-| **Dependency Mgmt**   | Poetry                                          |
+| **Dependency Mgmt**   | Poetry (35 essential deps)                      |
 | **Containerization**  | Docker, Docker Compose                          |
-| **CI/CD**             | GitHub Actions                                  |
+| **API Versioning**    | REST API v1                                     |
+
+### Key Improvements
+
+- **50% fewer dependencies** - Only essential packages included
+- **Versioned API structure** - `/api/v1/` endpoints
+- **Organized codebase** - Clear separation of concerns
+- **Better documentation** - Categorized by type
+- **Improved security** - Minimal attack surface
 
 ## 🚀 Getting Started
 

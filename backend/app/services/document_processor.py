@@ -171,17 +171,17 @@ class DocumentProcessor:
 			raise DocumentProcessingError(f"Failed to process document: {e!s}")
 
 	def _process_pdf(self, file_path: Path) -> Tuple[str, Dict]:
-		"""Extract text from PDF file using PyPDF2 or unstructured library."""
-		# Try PyPDF2 first (lighter dependency)
+		"""Extract text from PDF file using pypdf or unstructured library."""
+		# Try pypdf first (lighter dependency)
 		try:
-			import PyPDF2
-			return self._process_pdf_pypdf2(file_path)
+			import pypdf
+			return self._process_pdf_pypdf(file_path)
 		except ImportError:
 			pass
 
 		# Fallback to unstructured if available
 		if not UNSTRUCTURED_AVAILABLE:
-			raise DocumentProcessingError("PDF processing requires PyPDF2 or unstructured library. Please install with: pip install PyPDF2")
+			raise DocumentProcessingError("PDF processing requires pypdf or unstructured library. Please install with: pip install pypdf")
 
 		try:
 			# Use unstructured to partition PDF
@@ -210,16 +210,16 @@ class DocumentProcessor:
 			logger.error(f"PDF processing error: {e}")
 			raise DocumentProcessingError(f"Failed to extract text from PDF: {e!s}")
 
-	def _process_pdf_pypdf2(self, file_path: Path) -> Tuple[str, Dict]:
-		"""Extract text from PDF using PyPDF2 (lighter alternative)."""
+	def _process_pdf_pypdf(self, file_path: Path) -> Tuple[str, Dict]:
+		"""Extract text from PDF using pypdf (lighter alternative)."""
 		try:
-			import PyPDF2
+			import pypdf
 			
 			text_content = []
-			metadata = {"pages_count": 0, "extraction_method": "PyPDF2"}
+			metadata = {"pages_count": 0, "extraction_method": "pypdf"}
 			
 			with open(file_path, 'rb') as file:
-				pdf_reader = PyPDF2.PdfReader(file)
+				pdf_reader = pypdf.PdfReader(file)
 				metadata["pages_count"] = len(pdf_reader.pages)
 				
 				for page_num, page in enumerate(pdf_reader.pages):
@@ -239,8 +239,8 @@ class DocumentProcessor:
 			return full_text, metadata
 			
 		except Exception as e:
-			logger.error(f"PyPDF2 processing error: {e}")
-			raise DocumentProcessingError(f"Failed to extract text from PDF with PyPDF2: {e!s}")
+			logger.error(f"pypdf processing error: {e}")
+			raise DocumentProcessingError(f"Failed to extract text from PDF with pypdf: {e!s}")
 
 	def _process_docx(self, file_path: Path) -> Tuple[str, Dict]:
 		"""Extract text from DOCX file with formatting preservation."""

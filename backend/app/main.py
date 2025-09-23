@@ -6,8 +6,8 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .api import analytics, contracts, health, monitoring, workflows
-from .api.security_auth import router as security_auth_router
+from .api.v1 import contracts_router, health_router, monitoring_router, security_router
+from .api import analytics, workflows
 from .core.audit import AuditEventType, AuditSeverity, audit_logger
 from .core.config import get_settings, setup_langsmith, validate_required_settings
 from .core.exceptions import DocumentProcessingError, SecurityError, ValidationError
@@ -117,12 +117,13 @@ def create_app() -> FastAPI:
 		return JSONResponse(status_code=exc.status_code, content={"error": exc.detail})
 
 	# Include API routers
-	app.include_router(health.router, prefix="/api/v1")
-	app.include_router(contracts.router, prefix="/api/v1")
-	app.include_router(monitoring.router)  # No prefix, already has /monitoring
+	# API v1 routes
+	app.include_router(health_router, prefix="/api/v1")
+	app.include_router(contracts_router, prefix="/api/v1")
+	app.include_router(security_router, prefix="/api/v1/auth")
+	app.include_router(monitoring_router)  # No prefix, already has /monitoring
 	app.include_router(analytics.router, prefix="/api/v1")
 	app.include_router(workflows.router, prefix="/api/v1")
-	app.include_router(security_auth_router, prefix="/api/v1/auth")
 
 	# Add startup event
 	@app.on_event("startup")
