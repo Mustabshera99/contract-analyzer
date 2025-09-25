@@ -93,3 +93,8 @@ chroma/
 
 # Quarantine
 quarantine/
+
+# Environment files with secrets
+env.txt
+.env
+*.env
