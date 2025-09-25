@@ -5,23 +5,33 @@ A comprehensive interface for analyzing contract documents with advanced securit
 
 import logging
 import os
+import sys
 from datetime import datetime
 from pathlib import Path
+
+# Add project root to Python path to enable absolute imports
+project_root = Path(__file__).parent.parent.absolute()
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
 import streamlit as st
 
 # Import components
-from .components.analytics_dashboard import render_analytics_dashboard
-from .components.error_display import error_display
-from .components.file_upload import file_upload_component
-from .components.observability_dashboard import render_observability_dashboard
-from .components.progress_indicator import progress_indicator
-from .components.results_display import results_display
-from .utils.api_client import APIClient
+try:
+    from frontend.components.analytics_dashboard import render_analytics_dashboard
+    from frontend.components.error_display import error_display
+    from frontend.components.file_upload import file_upload_component
+    from frontend.components.observability_dashboard import render_observability_dashboard
+    from frontend.components.progress_indicator import progress_indicator
+    from frontend.components.results_display import results_display
+    from frontend.utils.api_client import APIClient
+except ImportError as e:
+    st.error(f"Import error: {e}")
+    st.stop()
 
 # Initialize API client
 # Use localhost for browser access, backend for container-to-container communication
-backend_url = "http://localhost:8000"
+backend_url = "http://localhost:8002"
 api_client = APIClient(backend_url)
 
 

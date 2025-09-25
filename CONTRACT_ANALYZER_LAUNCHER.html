@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contract Analyzer - Quick Access</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        .section {
+            margin: 25px 0;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            border-left: 4px solid #4CAF50;
+        }
+        .link-button {
+            display: inline-block;
+            padding: 12px 24px;
+            margin: 10px 10px 10px 0;
+            background: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        .link-button:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        .startup-button {
+            background: #FF6B6B;
+            font-size: 1.2em;
+            padding: 15px 30px;
+        }
+        .startup-button:hover {
+            background: #FF5252;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .status.online {
+            background: rgba(76, 175, 80, 0.3);
+            border: 1px solid #4CAF50;
+        }
+        .status.offline {
+            background: rgba(244, 67, 54, 0.3);
+            border: 1px solid #f44336;
+        }
+        .file-path {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+        }
+        .instructions {
+            background: rgba(255, 193, 7, 0.2);
+            border: 1px solid #FFC107;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📄 Contract Analyzer</h1>
+        
+        <div class="section">
+            <h2>🚀 Quick Start</h2>
+            <div class="instructions">
+                <strong>Step 1:</strong> Start the application using the startup script below
+            </div>
+            <div class="file-path">
+                Click this file to start: <strong>RUN_CONTRACT_ANALYZER.bat</strong>
+            </div>
+            <a href="file:///D:/Agentic%20AI%20Projects/AtomCamp%20Final%20Project/contract-analyzer/contract-analyzer/RUN_CONTRACT_ANALYZER.bat" class="link-button startup-button">
+                🎯 START APPLICATION
+            </a>
+        </div>
+
+        <div class="section">
+            <h2>🌐 Access Links</h2>
+            <p>Once the application is running, use these links:</p>
+            
+            <div id="frontend-status" class="status offline">
+                ❌ Frontend: Not Running
+            </div>
+            <a href="http://localhost:8501" target="_blank" class="link-button">
+                🖥️ Open Contract Analyzer (Frontend)
+            </a>
+            
+            <div id="backend-status" class="status offline">
+                ❌ Backend: Not Running  
+            </div>
+            <a href="http://127.0.0.1:8000" target="_blank" class="link-button">
+                ⚙️ Backend API
+            </a>
+            <a href="http://127.0.0.1:8000/docs" target="_blank" class="link-button">
+                📚 API Documentation
+            </a>
+            <a href="http://127.0.0.1:8000/health" target="_blank" class="link-button">
+                🏥 Health Check
+            </a>
+        </div>
+
+        <div class="section">
+            <h2>📋 Manual Start Options</h2>
+            <p>Alternative ways to start the services:</p>
+            
+            <h3>Option 1: Individual Services</h3>
+            <a href="file:///D:/Agentic%20AI%20Projects/AtomCamp%20Final%20Project/contract-analyzer/contract-analyzer/start_backend.bat" class="link-button">
+                🔧 Start Backend Only
+            </a>
+            <a href="file:///D:/Agentic%20AI%20Projects/AtomCamp%20Final%20Project/contract-analyzer/contract-analyzer/start_frontend.bat" class="link-button">
+                🎨 Start Frontend Only
+            </a>
+            
+            <h3>Option 2: Command Line</h3>
+            <div class="file-path">
+                cd "D:\Agentic AI Projects\AtomCamp Final Project\contract-analyzer\contract-analyzer"<br>
+                python simple_backend.py<br>
+                # In another terminal:<br>
+                streamlit run simple_frontend.py --server.port 8501
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🎯 How to Use</h2>
+            <ol>
+                <li><strong>Start the application</strong> using the big red button above</li>
+                <li><strong>Wait 10-15 seconds</strong> for both services to load</li>
+                <li><strong>Click "Open Contract Analyzer"</strong> to access the main app</li>
+                <li><strong>Upload a contract file</strong> (PDF, DOC, DOCX, or TXT)</li>
+                <li><strong>Click "Analyze Contract"</strong> to get AI insights</li>
+                <li><strong>Review the results</strong> - risk scores, findings, and recommendations</li>
+            </ol>
+        </div>
+
+        <div class="section">
+            <h2>⚠️ Troubleshooting</h2>
+            <ul>
+                <li><strong>If you see "Unable to connect":</strong> Wait for backend to fully start (15-30 seconds)</li>
+                <li><strong>If ports are busy:</strong> Close browser tabs and restart the application</li>
+                <li><strong>If startup fails:</strong> Check terminal windows for error messages</li>
+                <li><strong>For import errors:</strong> Make sure all dependencies are installed</li>
+            </ul>
+            
+            <button onclick="checkStatus()" class="link-button">
+                🔄 Check Service Status
+            </button>
+        </div>
+    </div>
+
+    <script>
+        async function checkServiceStatus(url) {
+            try {
+                const response = await fetch(url, { method: 'GET', mode: 'cors' });
+                return response.ok;
+            } catch (error) {
+                return false;
+            }
+        }
+
+        async function checkStatus() {
+            const frontendStatus = document.getElementById('frontend-status');
+            const backendStatus = document.getElementById('backend-status');
+            
+            // Check frontend (we can't directly check due to CORS, so we assume it's running if backend is)
+            const backendOnline = await checkServiceStatus('http://127.0.0.1:8000/health');
+            
+            if (backendOnline) {
+                backendStatus.className = 'status online';
+                backendStatus.textContent = '✅ Backend: Running';
+                frontendStatus.className = 'status online';
+                frontendStatus.textContent = '✅ Frontend: Running (check http://localhost:8501)';
+            } else {
+                backendStatus.className = 'status offline';
+                backendStatus.textContent = '❌ Backend: Not Running';
+                frontendStatus.className = 'status offline';
+                frontendStatus.textContent = '❌ Frontend: Not Running';
+            }
+        }
+
+        // Check status on page load
+        window.onload = function() {
+            setTimeout(checkStatus, 1000);
+        };
+    </script>
+</body>
+</html>

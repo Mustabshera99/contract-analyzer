@@ -1,0 +1,10 @@
+# Railway.app deployment configuration
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "streamlit run streamlit_app.py --server.port $PORT --server.address 0.0.0.0"
+
+[env]
+PYTHONUNBUFFERED = "1"
+PORT = "8501"
